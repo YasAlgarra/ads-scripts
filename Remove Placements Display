@@ -8,6 +8,8 @@
 
 var TLDs = '.xyz, .ws, .tk, .tv, .sk, .jo, .ru, .fyi, .pt, .io, .fr, .in, .be, .bg, .ro, .download';
 
+var keywords = 'game, job, play, empleo, trabajo, juego, employment';
+
 // -------------------------------------------------------
 
 function removePlacementByDomain (domain) {
@@ -29,11 +31,35 @@ function removePlacementByDomain (domain) {
   }
 }
 
+function removePlacementByKeyword (keyword) {
+  var placementSelector = AdWordsApp.display().placements()
+  .withCondition("PlacementUrl CONTAINS '" + keyword + "'")
+  .withCondition("CampaignStatus != REMOVED");
+
+  var placementIterator = placementSelector.get();
+  while (placementIterator.hasNext()) {
+    var placement = placementIterator.next();
+    var placementUrl = placement.getUrl();
+    
+    var campaign = placement.getCampaign();
+    var excludeOperation = campaign.display().newPlacementBuilder().withUrl(placementUrl).exclude();
+    if (!excludeOperation.isSuccessful()) {
+      Logger.log("Could not exclude : " + placementUrl);
+    }
+  }
+}
+
 function run () {
   TLDs.split(',').map(function (tld) {
     return tld.trim();
   }).forEach(function (domain) {
     removePlacementByDomain(domain);
+  });
+
+keywords.split(',').map(function(keyword) {
+    return keyword.trim();
+  }).forEach(function (keyword) {
+    removePlacementByKeyword(keyword);
   });
 }
 
