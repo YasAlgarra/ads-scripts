@@ -1,40 +1,22 @@
 /**
- * Removes placements ending in the tlds xyz, tk, and download.
+ * Removes placements ending in the tlds xyz, tk, and download, and those containing specific keywords.
  * @author Dawson Reid
  * @author Andrew Breen
  */
 
 // Top Level Domains to exclude
-
 var TLDs = '.xyz, .ws, .tk, .tv, .sk, .jo, .ru, .fyi, .pt, .io, .fr, .in, .be, .bg, .ro, .download';
 
-var keywords = 'game, job, play, empleo, trabajo, juego, employment';
+// Keywords to exclude
+var keywords = 'game, job, work, play, career, employment';
 
 // -------------------------------------------------------
 
-function removePlacementByDomain (domain) {
+function removePlacementByDomain(domain) {
+  //Logger.log("Attempting to remove placements by domain: " + domain);
   var placementSelector = AdWordsApp.display().placements()
-  .withCondition("PlacementUrl CONTAINS '" + domain + "'")
-  .withCondition("CampaignStatus != REMOVED");
-
-  var placementIterator = placementSelector.get();
-  while (placementIterator.hasNext()) {
-    var placement = placementIterator.next();
-    var placementUrl = placement.getUrl();
-    //Logger.log(placementUrl);
-
-    var campaign = placement.getCampaign();
-    var excludeOperation = campaign.display().newPlacementBuilder().withUrl(placementUrl).exclude();
-    if (!excludeOperation.isSuccessful()) {
-      Logger.log("Could not exclude : " + placementUrl);
-    }
-  }
-}
-
-function removePlacementByKeyword (keyword) {
-  var placementSelector = AdWordsApp.display().placements()
-  .withCondition("PlacementUrl CONTAINS '" + keyword + "'")
-  .withCondition("CampaignStatus != REMOVED");
+    .withCondition("PlacementUrl CONTAINS '" + domain + "'")
+    .withCondition("CampaignStatus != REMOVED");
 
   var placementIterator = placementSelector.get();
   while (placementIterator.hasNext()) {
@@ -43,36 +25,61 @@ function removePlacementByKeyword (keyword) {
     
     var campaign = placement.getCampaign();
     var excludeOperation = campaign.display().newPlacementBuilder().withUrl(placementUrl).exclude();
-    if (!excludeOperation.isSuccessful()) {
-      Logger.log("Could not exclude : " + placementUrl);
+    if (excludeOperation.isSuccessful()) {
+      Logger.log("Successfully excluded domain: " + placementUrl);
+    } else {
+      Logger.log("Could not exclude domain: " + placementUrl);
     }
   }
 }
 
-function run () {
-  TLDs.split(',').map(function (tld) {
+function removePlacementByKeyword(keyword) {
+  //Logger.log("Attempting to remove placements by keyword: " + keyword);
+  var placementSelector = AdWordsApp.display().placements()
+    .withCondition("PlacementUrl CONTAINS '" + keyword + "'")
+    .withCondition("CampaignStatus != REMOVED");
+
+  var placementIterator = placementSelector.get();
+  while (placementIterator.hasNext()) {
+    var placement = placementIterator.next();
+    var placementUrl = placement.getUrl();
+    
+    var campaign = placement.getCampaign();
+    var excludeOperation = campaign.display().newPlacementBuilder().withUrl(placementUrl).exclude();
+    if (excludeOperation.isSuccessful()) {
+      Logger.log("Successfully excluded keyword: " + placementUrl);
+    } else {
+      Logger.log("Could not exclude keyword: " + placementUrl);
+    }
+  }
+}
+
+function run() {
+  Logger.log("Starting the run function.");
+  TLDs.split(',').map(function(tld) {
     return tld.trim();
-  }).forEach(function (domain) {
+  }).forEach(function(domain) {
     removePlacementByDomain(domain);
   });
 
-keywords.split(',').map(function(keyword) {
+ keywords.split(',').map(function(keyword) {
     return keyword.trim();
-  }).forEach(function (keyword) {
+  }).forEach(function(keyword) {
     removePlacementByKeyword(keyword);
   });
+  Logger.log("Run function completed.");
 }
 
-function executeInSequence (sequentialIds, executeSequentiallyFunc) {
+function executeInSequence(sequentialIds, executeSequentiallyFunc) {
   Logger.log('Executing in sequence : ' + sequentialIds);
-  sequentialIds.forEach(function (accountId) {
+  sequentialIds.forEach(function(accountId) {
     var account = MccApp.accounts().withIds([accountId]).get().next();
     MccApp.select(account);
     executeSequentiallyFunc();
   });
 }
 
-function main () {
+function main() {
   try {
     var accountIterator = MccApp.accounts().orderBy('Name').get();
     Logger.log('Total number of accounts under MCC : ' + accountIterator.totalNumEntities());
@@ -84,17 +91,64 @@ function main () {
     }
     var parallelIds = accountIds.slice(0, 50);
     var sequentialIds = accountIds.slice(50);
-    // execute accross accounts
+    // execute across accounts
     MccApp.accounts()
       .withIds(parallelIds)
       .executeInParallel('run');
     if (sequentialIds.length > 0) {
       executeInSequence(sequentialIds, run);
     }
+    
+    // Verificación de placements excluidos
+    placementsExcluded = AdWordsApp.getExecutionInfo().getResults().filter(function(result) {
+      return result.getError() == null; // Filtrar solo los resultados sin errores
+    }).map(function(result) {
+      return result.getReturnValue();
+    }).flat(); // Aplanar el array de resultados
+
+    if (placementsExcluded.length > 0) {
+      Logger.log('Placements successfully excluded:');
+      placementsExcluded.forEach(function(placement) {
+        Logger.log(placement);
+      });
+    } else {
+      Logger.log('No placements were excluded.');
+    }
+    
+     // Registro adicional para verificar la ejecución de esta parte del código
+    Logger.log('Reached the end of main function.');
+    
   } catch (exception) {
-    // not an Mcc
+    // not an MCC
     Logger.log('Running on non-MCC account.');
     run();
   }
-}
+  
+  // Lógica para verificar placements excluidos después de que todas las ejecuciones hayan terminado
+    // Podemos realizar esta verificación aquí
+    var placementsExcluded = [];
 
+    // Lógica para obtener y registrar placements excluidos
+    // Esto puede incluir un código similar al que se encuentra en la función run()
+    TLDs.split(',').map(function(tld) {
+      return tld.trim();
+    }).forEach(function(domain) {
+      removePlacementByDomain(domain);
+    });
+
+    // Verificación de placements excluidos
+    placementsExcluded = AdWordsApp.display().placements()
+      .withCondition("CampaignStatus != REMOVED")
+      .get();
+
+    if (placementsExcluded.hasNext()) {
+      Logger.log('Placements successfully excluded:');
+      while (placementsExcluded.hasNext()) {
+        var placement = placementsExcluded.next();
+        var placementUrl = placement.getUrl();
+        Logger.log(placementUrl);
+      }
+    } else {
+      Logger.log('No placements were excluded.');
+    }
+  }
