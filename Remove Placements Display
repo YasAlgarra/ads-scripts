@@ -1,0 +1,74 @@
+/**
+ * Removes placements ending in the tlds xyz, tk, and download.
+ * @author Dawson Reid
+ * @author Andrew Breen
+ */
+
+// Top Level Domains to exclude
+
+var TLDs = '.xyz, .ws, .tk, .tv, .sk, .jo, .ru, .fyi, .pt, .io, .fr, .in, .be, .bg, .ro, .download';
+
+// -------------------------------------------------------
+
+function removePlacementByDomain (domain) {
+  var placementSelector = AdWordsApp.display().placements()
+  .withCondition("PlacementUrl CONTAINS '" + domain + "'")
+  .withCondition("CampaignStatus != REMOVED");
+
+  var placementIterator = placementSelector.get();
+  while (placementIterator.hasNext()) {
+    var placement = placementIterator.next();
+    var placementUrl = placement.getUrl();
+    //Logger.log(placementUrl);
+
+    var campaign = placement.getCampaign();
+    var excludeOperation = campaign.display().newPlacementBuilder().withUrl(placementUrl).exclude();
+    if (!excludeOperation.isSuccessful()) {
+      Logger.log("Could not exclude : " + placementUrl);
+    }
+  }
+}
+
+function run () {
+  TLDs.split(',').map(function (tld) {
+    return tld.trim();
+  }).forEach(function (domain) {
+    removePlacementByDomain(domain);
+  });
+}
+
+function executeInSequence (sequentialIds, executeSequentiallyFunc) {
+  Logger.log('Executing in sequence : ' + sequentialIds);
+  sequentialIds.forEach(function (accountId) {
+    var account = MccApp.accounts().withIds([accountId]).get().next();
+    MccApp.select(account);
+    executeSequentiallyFunc();
+  });
+}
+
+function main () {
+  try {
+    var accountIterator = MccApp.accounts().orderBy('Name').get();
+    Logger.log('Total number of accounts under MCC : ' + accountIterator.totalNumEntities());
+
+    var accountIds = [];
+    while (accountIterator.hasNext()) {
+      var account = accountIterator.next();
+      accountIds.push(account.getCustomerId());
+    }
+    var parallelIds = accountIds.slice(0, 50);
+    var sequentialIds = accountIds.slice(50);
+    // execute accross accounts
+    MccApp.accounts()
+      .withIds(parallelIds)
+      .executeInParallel('run');
+    if (sequentialIds.length > 0) {
+      executeInSequence(sequentialIds, run);
+    }
+  } catch (exception) {
+    // not an Mcc
+    Logger.log('Running on non-MCC account.');
+    run();
+  }
+}
+
