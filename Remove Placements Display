@@ -99,7 +99,7 @@ function main() {
       executeInSequence(sequentialIds, run);
     }
     
-    // Verificación de placements excluidos
+    // excluded placements verification
     placementsExcluded = AdWordsApp.getExecutionInfo().getResults().filter(function(result) {
       return result.getError() == null; // Filtrar solo los resultados sin errores
     }).map(function(result) {
@@ -115,7 +115,7 @@ function main() {
       Logger.log('No placements were excluded.');
     }
     
-     // Registro adicional para verificar la ejecución de esta parte del código
+    // run verification
     Logger.log('Reached the end of main function.');
     
   } catch (exception) {
@@ -124,19 +124,18 @@ function main() {
     run();
   }
   
-  // Lógica para verificar placements excluidos después de que todas las ejecuciones hayan terminado
-    // Podemos realizar esta verificación aquí
+  // verification of excluded placement after script execution
     var placementsExcluded = [];
 
-    // Lógica para obtener y registrar placements excluidos
-    // Esto puede incluir un código similar al que se encuentra en la función run()
+    // excluded placement verification
+    // similar to function run()
     TLDs.split(',').map(function(tld) {
       return tld.trim();
     }).forEach(function(domain) {
       removePlacementByDomain(domain);
     });
 
-    // Verificación de placements excluidos
+    // excluded placement verification
     placementsExcluded = AdWordsApp.display().placements()
       .withCondition("CampaignStatus != REMOVED")
       .get();
