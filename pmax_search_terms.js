@@ -8,7 +8,8 @@
 // Last update: 18-08-2023: fixed a little mistake in the query, that prevents you from collecting more than 30 days data
 //
 // ABOUT THE SCRIPT
-// Export search term from Pmax campaigns to a spreadsheet.
+// Export search term from Pmax campaigns to a spreadsheet. 
+// The script work only in "normal" PMax and product feed PMax, NO local PMax
 //
 ////////////////////////////////////////////////////////////////////
 
